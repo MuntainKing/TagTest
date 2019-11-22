@@ -1,5 +1,7 @@
 package com.smartrfid.tagtest;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -25,6 +27,8 @@ public class Main {
 	static int epcCount = 0;
 	static int Bottlecount = 0;
 	static String jarPath;
+	static boolean[] finished;
+	static int place = 1;
 
 	public static void main(String[] args) {
 		guiInst = new gui();
@@ -33,6 +37,7 @@ public class Main {
 		guiInst.CreateGui();
 		epcStrings = new String[80];
 		MainArray = new boolean[80][25];
+		finished = new boolean[80];
 		jarPath = Main.class.getProtectionDomain().getCodeSource().getLocation().getPath();
 		String decodedPath;
 		try {
@@ -50,8 +55,8 @@ public class Main {
 			//Ищем уники
 			for (int i = 0; i < epcStrings.length; i++) {
 				if (epcStrings[i] != null && epcStrings[i].equals(epcString)) {uniqueEpc = false;}
-			}
-			//Если найденная метка уникальна, то добавляем строку в таблицу, добавляем епс в  массив, ищем в файле номер и заметку и добавляем их в таблицу
+			}			
+			//Если найденная метка уникальна, то добавляем строку в таблицу, добавляем епс в  массив, ищем в файле номер и заметку и добавляем их в таблицу			
 			if (uniqueEpc) {
 				guiInst.addEPC(Integer.toString(epcCount+1),epcString);
 				epcStrings[epcCount] = epcString;
@@ -62,8 +67,14 @@ public class Main {
 		if (ActualTestMode && lap < 25) {
 			for (int i = 0; i < epcStrings.length; i++) {
 				if (epcStrings[i] != null && epcStrings[i].equals(epcString)) {
-					guiInst.editCell("Да", i, lap +4);
-					MainArray[i][lap] = true;
+					//Окрасить в зеленый ячейку
+					guiInst.setCellFound(i, lap);
+					if  (finished[i] != true) {
+						guiInst.editCell(Integer.toString(place), i, lap +4);
+						finished[i] = true;
+						MainArray[i][lap] = true;
+						place++;
+					}
 				}
 			}
 		}
@@ -86,8 +97,13 @@ public class Main {
 			if (lap < 25) {
 				lap++;
 				guiInst.SetLapNum(lap+1);
+				guiInst.resetFoundCells();//Сброс фона всех ячеек
 			}
 			if (lap == 25) switchTestMode();
+			for (int i = 0; i < finished.length; i++) {
+				finished[i]=false;
+			}
+			place = 1;
 			System.out.println("lap "+ lap);
 		}
 	}
@@ -95,17 +111,20 @@ public class Main {
 	public static void switchTestMode() {
 		if (ActualTestMode) {
 			reader.stopReader();
+			guiInst.resetFoundCells();
 			guiInst.changeReadingIcon(false);
 			guiInst.NewLapButtonSetEnabled(false);
 			guiInst.switchStartIcon(true);
 			guiInst.SearchButtonSetEnabled(true);
+			guiInst.stopGUIWorker();
 		}
 		else if (!SearchingMode) {
 			reader.startReader("1111");
 			guiInst.changeReadingIcon(true);
 			guiInst.switchStartIcon(false);
 			guiInst.NewLapButtonSetEnabled(true);
-			guiInst.SearchButtonSetEnabled(false);	
+			guiInst.SearchButtonSetEnabled(false);
+			guiInst.startGUIWorker();
 		}
 		ActualTestMode = !ActualTestMode;
 	}
